@@ -210,3 +210,63 @@ It showcases:
 - Centralized logging, error handling, and request validation  
 - Rate-limited public endpoints to mitigate abuse  
 
+
+
+
+
+## 📈 Task 2 – Media View Tracking & Analytics
+
+This task adds **view logging** and **analytics** on top of the media backend.
+
+### 🔧 What’s new
+- `POST /api/media/:id/view` — logs a view (`media_id`, `IP`, `timestamp`).
+  - Auth: accepts **stream token** (`?token=`) or **admin JWT**.
+  - Rate limited to mitigate abuse.
+  - Server sets the timestamp (clients can’t spoof).
+- `GET /api/media/:id/analytics` — returns:
+  ```json
+  {
+    "total_views": 174,
+    "unique_ips": 122,
+    "views_per_day": {
+      "2025-08-01": 34,
+      "2025-08-02": 56
+    }
+  }
+  ```
+  - Supports `?from=YYYY-MM-DD&to=YYYY-MM-DD`
+  - **Admin-only** (JWT/cookie)
+
+### 🔐 Security & integrity
+- **Auth models:**
+  - Admin JWT (httpOnly cookie) for management and analytics.
+  - **Short-lived stream token** for actual playback & view logging.
+- **Integrity:** timestamps are always generated server-side.
+- **Rate-limiting:** view endpoint is throttled to prevent spam.
+- **Indexes:** queries scale via `{media_id, timestamp}` and `{media_id, viewed_by_ip}` indexes.
+
+### 🧪 Testing Flow
+1. Login as admin → cookie set.
+2. Create a media → get its `_id`.
+3. Generate a stream URL → copy `token`.
+4. Log a view:
+   - `POST /api/media/:id/view?token={{token}}` (preferred)
+   - OR `POST /api/media/:id/view` as admin (for testing)
+5. Get analytics:
+   - `GET /api/media/:id/analytics?from=2025-08-01&to=2025-08-03`
+
+### 🧱 Edge cases handled
+- Invalid/expired stream token → `401`.
+- Missing/invalid ObjectId → `400`.
+- Media not found → `404`.
+- Out-of-range date filters → returns zero counts gracefully.
+- High-volume replays → rate limit protects backend.
+- Client spoofing timestamp → ignored (server timestamp is authoritative).
+
+### 🧭 Design notes
+- The **view logger** accepts stream tokens so that only users with a valid short-lived right to watch can increment view counts.
+- **Admin fall-back** makes it easy to simulate test traffic from Postman without generating stream tokens each time.
+- Analytics are built with a single `$facet` pipeline, returning totals and per-day counts efficiently.
+
+
+

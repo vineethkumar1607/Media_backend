@@ -10,4 +10,8 @@ const MediaViewLogSchema = new Schema(
   { versionKey: false }
 );
 
+// Perf indexes for analytics
+MediaViewLogSchema.index({ media_id: 1, timestamp: 1 });           // time-based queries
+MediaViewLogSchema.index({ media_id: 1, viewed_by_ip: 1 });        // unique IP aggregations
+
 module.exports = model("MediaViewLog", MediaViewLogSchema);

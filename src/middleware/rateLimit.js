@@ -8,4 +8,13 @@ const streamLimiter = rateLimit({
   legacyHeaders: false
 });
 
-module.exports = { streamLimiter };
+
+// Limit raw view pings to avoid abuse if someone hits the endpoint directly
+const viewLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120, 
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+module.exports = { streamLimiter, viewLimiter };
